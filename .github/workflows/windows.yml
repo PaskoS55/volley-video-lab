@@ -1,28 +1,79 @@
-name: Test Build
+name: Windows x64 Release
 
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
 
+env:
+  QT_VERSION: 6.5.3
+  QT_ARCH: win64_msvc2019_64
+  QT_DIR: C:\Qt
+  BUILD_DIR: build
+  DIST_DIR: dist
+  PACKAGE_NAME: VolleyVideoLab-Windows-x64.zip
+  EXE_NAME: VolleyVideoLab.exe
+
 jobs:
-  test:
+  build-windows-x64:
     runs-on: windows-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: List files
-        run: |
-          echo "Repository contents:"
-          Get-ChildItem -Recurse
+      - name: Install Ninja
+        run: choco install ninja -y
 
-      - name: Check CMakeLists.txt exists
+      - name: Setup MSVC x64
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Qt via aqtinstall
         run: |
-          if (Test-Path "CMakeLists.txt") {
-            echo "CMakeLists.txt found!"
-          } else {
-            echo "ERROR: CMakeLists.txt not found!"
+          python -m pip install --upgrade pip
+          pip install aqtinstall
+          aqt install-qt windows desktop ${{ env.QT_VERSION }} ${{ env.QT_ARCH }} --outputdir ${{ env.QT_DIR }} -m qtdeclarative qtmultimedia
+        shell: pwsh
+
+      - name: Configure CMake
+        run: |
+          $qtPrefix = "${{ env.QT_DIR }}\${{ env.QT_VERSION }}\msvc2019_64"
+          cmake -B $env:BUILD_DIR -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_PREFIX_PATH="$qtPrefix"
+        shell: pwsh
+
+      - name: Build
+        run: cmake --build $env:BUILD_DIR
+        shell: pwsh
+
+      - name: Deploy and package
+        run: |
+          $exe = Get-ChildItem -Path $env:BUILD_DIR -Recurse -Filter $env:EXE_NAME -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if (-not $exe) {
+            Write-Host "ERROR: $env:EXE_NAME not found"
             exit 1
           }
+
+          New-Item -ItemType Directory -Force -Path $env:DIST_DIR | Out-Null
+          Copy-Item -Path $exe.FullName -Destination (Join-Path $env:DIST_DIR $env:EXE_NAME) -Force
+
+          $windeployqt = "${{ env.QT_DIR }}\${{ env.QT_VERSION }}\msvc2019_64\bin\windeployqt.exe"
+          & $windeployqt --release --no-translations --qmldir qml (Join-Path $env:DIST_DIR $env:EXE_NAME)
+
+          Compress-Archive -Path "$env:DIST_DIR\*" -DestinationPath $env:PACKAGE_NAME -Force
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VolleyVideoLab-Windows-x64
+          path: ${{ env.PACKAGE_NAME }}
