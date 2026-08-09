@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  QT_VERSION: 6.5.3
-  QT_ARCH: win64_msvc2019_64
+  QT_VERSION: 6.8.0
+  QT_ARCH: win64_msvc2022_64
   QT_DIR: C:\Qt
   BUILD_DIR: build
   DIST_DIR: dist
@@ -44,7 +44,7 @@ jobs:
 
       - name: Configure CMake
         run: |
-          $qtPrefix = "${{ env.QT_DIR }}\${{ env.QT_VERSION }}\msvc2019_64"
+          $qtPrefix = "${{ env.QT_DIR }}\${{ env.QT_VERSION }}\msvc2022_64"
           cmake -B $env:BUILD_DIR -G Ninja `
             -DCMAKE_BUILD_TYPE=Release `
             -DCMAKE_PREFIX_PATH="$qtPrefix"
@@ -66,7 +66,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $env:DIST_DIR | Out-Null
           Copy-Item -Path $exe.FullName -Destination (Join-Path $env:DIST_DIR $env:EXE_NAME) -Force
 
-          $windeployqt = "${{ env.QT_DIR }}\${{ env.QT_VERSION }}\msvc2019_64\bin\windeployqt.exe"
+          $windeployqt = "${{ env.QT_DIR }}\${{ env.QT_VERSION }}\msvc2022_64\bin\windeployqt.exe"
           & $windeployqt --release --no-translations --qmldir qml (Join-Path $env:DIST_DIR $env:EXE_NAME)
 
           Compress-Archive -Path "$env:DIST_DIR\*" -DestinationPath $env:PACKAGE_NAME -Force
