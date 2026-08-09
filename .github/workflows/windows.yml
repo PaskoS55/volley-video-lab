@@ -1,0 +1,70 @@
+name: Windows x64 Release
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  QT_VERSION: 6.7.3
+  BUILD_DIR: build
+  DIST_DIR: dist
+  PACKAGE_NAME: VolleyVideoLab-Windows-x64.zip
+  EXE_NAME: VolleyVideoLab.exe
+
+jobs:
+  build-windows-x64:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: choco install ninja -y
+
+      - name: Setup MSVC x64
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          target: desktop
+          arch: win64_msvc2019_64
+          modules: qtdeclarative qtmultimedia
+          cache: true
+
+      - name: Configure CMake
+        run: |
+          cmake -B $env:BUILD_DIR -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_PREFIX_PATH="$env:Qt6_DIR"
+
+      - name: Build
+        run: cmake --build $env:BUILD_DIR
+
+      - name: Deploy and package
+        run: |
+          $exe = Get-ChildItem -Path $env:BUILD_DIR -Recurse -Filter $env:EXE_NAME -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if (-not $exe) {
+            Write-Host "ERROR: $env:EXE_NAME not found"
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Force -Path $env:DIST_DIR | Out-Null
+          Copy-Item -Path $exe.FullName -Destination (Join-Path $env:DIST_DIR $env:EXE_NAME) -Force
+
+          $windeployqt = Join-Path $env:Qt6_DIR "bin\windeployqt.exe"
+          & $windeployqt --release --no-translations --qmldir qml (Join-Path $env:DIST_DIR $env:EXE_NAME)
+
+          Compress-Archive -Path "$env:DIST_DIR\*" -DestinationPath $env:PACKAGE_NAME -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VolleyVideoLab-Windows-x64
+          path: ${{ env.PACKAGE_NAME }}
