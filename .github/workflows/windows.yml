@@ -35,11 +35,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Qt via aqtinstall
+      - name: Install Qt base
         run: |
           python -m pip install --upgrade pip
           pip install aqtinstall
-          aqt install-qt windows desktop ${{ env.QT_VERSION }} ${{ env.QT_ARCH }} --outputdir ${{ env.QT_DIR }} -m qtdeclarative qtmultimedia
+          aqt install-qt windows desktop ${{ env.QT_VERSION }} ${{ env.QT_ARCH }} --outputdir ${{ env.QT_DIR }}
+        shell: pwsh
+
+      - name: Install Qt Multimedia module
+        run: |
+          aqt install-module windows desktop ${{ env.QT_VERSION }} ${{ env.QT_ARCH }} qtmultimedia --outputdir ${{ env.QT_DIR }}
         shell: pwsh
 
       - name: Configure CMake
