@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  QT_VERSION: 6.7.3
+  QT_VERSION: 6.8.0
   BUILD_DIR: build
   DIST_DIR: dist
   PACKAGE_NAME: VolleyVideoLab-Windows-x64.zip
@@ -33,9 +33,9 @@ jobs:
         with:
           version: ${{ env.QT_VERSION }}
           target: desktop
-          arch: win64_msvc2019_64
+          arch: win64_msvc2022_64
           modules: qtdeclarative qtmultimedia
-          cache: true
+          cache: false
 
       - name: Configure CMake
         run: |
